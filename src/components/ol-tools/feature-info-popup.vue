@@ -15,7 +15,7 @@
         <template #title>
           <div class="d-flex">
             <span style="font-weight: bold" class="me-2">{{ title }}</span>
-            <ChartPopup></ChartPopup>
+            <!-- <ChartPopup></ChartPopup> -->
           </div>
           <!-- <a-button v-if="isStation" class="ms-2" type="dashed" size="small" @click="showChart">Biểu đồ</a-button> -->
         </template>
@@ -32,10 +32,10 @@
           :style="{ fontSize: '0.8rem', borderRadius: '8px' }">
           <template #footer>
             <div class="d-flex justify-content-around">
-              <a-button type="primary" size="small"
-                >Phóng to <i class="fa-solid fa-magnifying-glass-plus ms-1"></i>
+              <a-button type="primary" size="small">
+                Zoom in <i class="fa-solid fa-magnifying-glass-plus ms-1"></i>
               </a-button>
-              <a-button type="primary" size="small">Dẫn đường <i class="fa-solid fa-location-dot ms-1"></i></a-button>
+              <a-button type="primary" size="small">Route<i class="fa-solid fa-location-dot ms-1"></i></a-button>
             </div>
           </template>
         </a-table>
@@ -48,6 +48,11 @@
 import { defineComponent, ref, reactive, toRefs } from 'vue';
 import { mapState } from '../../stores/map-state';
 import ChartPopup from './chart-popup.vue';
+import VectorLayer from 'ol/layer/Vector';
+import { Vector as VectorSource } from 'ol/source';
+import { Feature, Observable, Overlay } from 'ol';
+import { Style, Stroke, Circle, Fill } from 'ol/style.js';
+import { Observable as openlayersObservable } from 'ol';
 
 export default defineComponent({
   components: {
@@ -86,6 +91,60 @@ export default defineComponent({
       rows: [],
       isStation: false,
       stationData: { id: 1, year: 2023 },
+      highlightLabelStyles: {
+        MultiLineString: new Style({
+          stroke: new Stroke({
+            color: 'blue',
+            width: 4,
+          }),
+        }),
+        LineString: new Style({
+          stroke: new Stroke({
+            color: 'blue',
+            width: 4,
+          }),
+        }),
+        Point: new Style({
+          image: new Circle({
+            radius: 10,
+            fill: new Fill({
+              color: 'pink',
+            }),
+            stroke: new Stroke({
+              color: 'white',
+              width: 1,
+            }),
+          }),
+        }),
+        MultiPolygon: new Style({
+          stroke: new Stroke({
+            color: 'blue',
+            width: 2,
+          }),
+          fill: new Fill({
+            color: 'rgba(243, 138, 138, 0.5)',
+          }),
+        }),
+        Polygon: new Style({
+          stroke: new Stroke({
+            color: 'blue',
+            width: 3,
+          }),
+          fill: new Fill({
+            color: 'rgba(243, 138, 138, 0.5)',
+          }),
+        }),
+        Circle: new Style({
+          stroke: new Stroke({
+            color: 'cyan',
+            width: 1,
+          }),
+          fill: new Fill({
+            color: 'rgba(243, 138, 138, 0.5)',
+          }),
+        }),
+      },
+      showPopupKey: null,
       // signInState: true,
       // test: '123',
       // anhquyen: '321123',
@@ -124,22 +183,27 @@ export default defineComponent({
       console.log(this.isStation);
     },
 
+    stylePopup(feature) {
+      return this.highlightLabelStyles[feature.getGeometry().getType()];
+    },
+
     addClick() {
       let closer = document.getElementById('popup-closer');
-      let highlightLayer = new ol.layer.Vector({
-        title: 'Feature popup highlight',
-        source: new ol.source.Vector({}),
+      let highlightLayer = new VectorLayer({
+        title: 'Feature highlight layer',
+        source: new VectorSource({}),
+        style: this.stylePopup,
       });
       highlightLayer.setVisible(false);
-      const overlay = new ol.Overlay({
+      const overlay = new Overlay({
         title: 'Feature popup',
         id: 'featurePopupOverlay',
         element: document.getElementById('popup'),
-        autoPan: {
-          animation: {
-            duration: 250,
-          },
-        },
+        // autoPan: {
+        //   animation: {
+        //     duration: 250,
+        //   },
+        // },
       });
 
       closer.onclick = function () {
@@ -154,7 +218,8 @@ export default defineComponent({
       this.map.addLayer(highlightLayer);
 
       let that = this;
-      this.map.on('singleclick', function (evt) {
+
+      this.showPopupKey = this.map.on('singleclick', function (evt) {
         that.featureProp = [];
 
         highlightLayer.getSource().clear();
@@ -176,7 +241,7 @@ export default defineComponent({
             featureProp.rows = [];
             featureProp.geom = '';
             let props = feature.getProperties();
-            console.log(feature.getProperties());
+            // console.log(feature.getProperties());
             Object.keys(props).forEach((x, i, arr) => {
               if (x != 'geometry' && x != 'HinhAnh') {
                 featureProp.rows.push({
@@ -195,16 +260,19 @@ export default defineComponent({
             if (featureProp.rows.length) {
               that.featureProp.push(featureProp);
             }
+          } else {
+            // highlightLayer.setVisible(false);
+            // highlightLayer.getSource().clear();
           }
         });
 
         // console.log(that.featureProp[0].rows.target);
-        // console.log(that.featureProp[0].geom);
+        // console.log(that.featureProp[0]);
         if (that.featureProp.length) {
           that.title = that.featureProp[0].title;
           that.rows = that.featureProp[0].rows;
 
-          let feature = new ol.Feature({
+          let feature = new Feature({
             geometry: that.featureProp[0].geom,
           });
 

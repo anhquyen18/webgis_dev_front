@@ -1,4 +1,13 @@
 // import '../../node_modules/proj4/dist/proj4.js';
+import { register } from 'ol/proj/proj4.js';
+import { get } from 'ol/proj.js';
+// import { proj4 as aqtran } from '../../node_modules/proj4/dist/proj4.js';
+// import { proj4 } from 'proj4.js';
+// import proj4 from 'proj4/dist/proj4.js';
+// import proj4 from 'proj4.js';
+// import { Proj } from 'proj4/dist/proj4.js';.
+
+import proj4 from 'proj4';
 
 // VN2000 Noi bo mui 3
 const htd_103_nb =
@@ -236,8 +245,12 @@ function addCustomCrs(name) {
   customCrsList.forEach((element) => {
     if (formatCrsName(name) === formatCrsName(element.name) || formatCrsCode(name) === formatCrsCode(element.code)) {
       proj4.defs(element.code, element.proj4);
-      ol.proj.proj4.register(proj4);
-      projection = ol.proj.get(element.code);
+      // Proj.defs(element.code, element.proj4);
+
+      // ol.proj.proj4.register(proj4);
+      // projection = ol.proj.get(element.code);
+      register(proj4);
+      projection = get(element.code);
     }
   });
   return projection;

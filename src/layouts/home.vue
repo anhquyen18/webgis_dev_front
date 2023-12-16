@@ -1,24 +1,71 @@
 <template>
   <a-spin :spinning="homeSpinning" tip="Loading..." size="large">
-    <div class="content-container vh-100">
-      <div id="map" class="map h-100"></div>
-      <div class="top-left-nav d-inline-flex align-items-center">
-        <Category></Category>
-        <a-input-search class="ms-3 rounded" placeholder="Tìm kiếm" style="width: 300px" enter-button allowClear />
-      </div>
+    <a-layout>
+      <a-layout-sider
+        breakpoint="lg"
+        class="home-sider"
+        v-model:collapsed="siderCollapsed"
+        theme="light"
+        :width="siderWidth"
+        :collapsed-width="collapsedWidth"
+        @breakpoint="onBreakpoint"
+        :class="{ 'zero-width': collapsedWidth === 80 }">
+        <a-row class="mt-2" align="middle">
+          <a-col :span="6">
+            <router-link :to="{ name: 'home-page' }">
+              <img src="../assets/luffy-chilling-gear5-round.png" alt="logo" style="width: 4rem; height: 4rem" />
+            </router-link>
+          </a-col>
+          <a-col v-if="!siderCollapsed" :span="18">
+            <p
+              style="
+                text-align: center;
+                font-weight: bold;
+                font-size: 1rem;
+                text-transform: uppercase;
+                color: rgb(91, 91, 91);
+              ">
+              WebGIS Project <br />
+              by PAI
+            </p>
+          </a-col>
+        </a-row>
+        <SiderLayerManager ref="siderLayerManagerRef" class="mt-3"></SiderLayerManager>
+      </a-layout-sider>
 
-      <div class="top-right-nav d-inline-flex align-items-center align-content-end">
-        <AppManager v-if="getSignInState === true" />
-        <SignIn></SignIn>
-      </div>
+      <a-layout-content>
+        <div class="content-container vh-100" style="position: relative">
+          <div id="map" class="map h-100"></div>
+          <a-row justify="start" class="top-left-nav align-items-center" style="width: 90%">
+            <a-col :xl="1" :xs="2">
+              <a-button size="large" shape="circle" @click="siderCollapsedChange">
+                <i class="fa-solid fa-bars"></i>
+              </a-button>
+            </a-col>
+            <a-col :xl="6" :md="10" :xs="0">
+              <a-input-search
+                v-model:value="searchValue"
+                class="ms-3 rounded"
+                placeholder="Search"
+                @search="onSearch()"
+                :disabled="searchInputDisabled"
+                :enter-button="!searchInputDisabled"
+                :loading="searchInputDisabled" />
+            </a-col>
+          </a-row>
 
-      <div class="bottom-right-nav align-items-center">
-        <!-- <LayerManager class="mt-2"> </LayerManager> -->
-        <!-- <a-button type="primary" @click="test()">Tét</a-button> -->
-        <ToolBox class="mt-5"></ToolBox>
-        <LayerManager class="mt-5"></LayerManager>
-      </div>
-    </div>
+          <div class="top-right-nav d-inline-flex align-items-center align-content-end">
+            <AppManager v-if="getSignInState === true" />
+            <SignIn></SignIn>
+          </div>
+
+          <div class="bottom-right-nav align-items-center">
+            <ToolBox class="mt-5"></ToolBox>
+            <LayerManager class="mt-5"></LayerManager>
+          </div>
+        </div>
+      </a-layout-content>
+    </a-layout>
     <FeatureInfoPopup></FeatureInfoPopup>
   </a-spin>
 </template>
@@ -39,7 +86,12 @@ import AppManager from '../components/ol-tools/app-manager.vue';
 import LayerManager from '../components/ol-tools/layer-manager.vue';
 import FeatureInfoPopup from '../components/ol-tools/feature-info-popup.vue';
 import ToolBox from '../components/ol-tools/tool-box.vue';
+import SiderLayerManager from '../components/ol-tools/sider-layer-manager.vue';
 import { setCookie, getCookie } from '../js/util';
+import { PieChartOutlined, LoadingOutlined } from '@ant-design/icons-vue';
+
+import { Map, View } from 'ol';
+import olms from 'ol-mapbox-style';
 
 // import * as a from '../assets';
 
@@ -51,49 +103,137 @@ export default defineComponent({
     LayerManager,
     FeatureInfoPopup,
     ToolBox,
+    SiderLayerManager,
+    PieChartOutlined,
+    LoadingOutlined,
   },
+
+  data() {
+    return {
+      test: false,
+    };
+  },
+
+  beforeRouteEnter(to, from, next) {
+    if (getCookie('accessToken') === '') {
+      next((data) => {
+        data.homeSpinning = false;
+      });
+    } else {
+      next((data) => {
+        const getSignedIn = () => {
+          axios
+            .post(
+              'http://127.0.0.1:8000/api/signed-in',
+              { accountId: '' },
+              {
+                headers: {
+                  Authorization: `Bearer ${getCookie('accessToken')}`,
+                },
+              }
+            )
+            .then((response) => {
+              if (response) {
+                console.log(response);
+                userState().onAuthentication();
+                data.homeSpinning = false;
+                data.userData = JSON.parse(getCookie('user'));
+                setCookie('user', JSON.stringify(response.data.user));
+              }
+            })
+            .catch((error) => {
+              console.log(error);
+              data.homeSpinning = false;
+              setCookie('accessToken', '');
+              setCookie('user', '');
+              userState().onLogOut();
+            });
+        };
+        getSignedIn();
+      });
+    }
+  },
+
   setup() {
     const route = useRoute();
     const router = useRouter();
     const store = userState();
-    const userData = ref();
-    provide('userData', userData);
+    // console.log(JSON.parse(getCookie('user')));
+    // xem cái userData này có giống accountInfo bên account không
 
     const homeSpinning = ref(true);
     provide('homeSpinning', homeSpinning);
 
-    let accessToken = {
-      headers: {
-        Authorization: `Bearer ${getCookie('accessToken')}`,
+    const userData = ref();
+    provide('userData', userData);
+
+    const siderCollapsed = ref(false);
+    const siderWidth = ref(250);
+    const collapsedWidth = ref(80);
+    const onBreakpoint = (broken) => {
+      // console.log(broken);
+      if (broken) {
+        collapsedWidth.value = 0;
+        // console.log(collapsedWidth.value);
+      } else {
+        collapsedWidth.value = 80;
+        // console.log(collapsedWidth.value);
+      }
+    };
+    const mainLayerData = ref([
+      {
+        title: 'Cống ngầm',
+        imagePath: '',
+        visible: true,
       },
-    };
-    let data = {
-      accountId: '',
-    };
+      {
+        title: 'Kênh',
+        imagePath: '',
+        visible: true,
+      },
+      {
+        title: 'Cống ngăn triều',
+        imagePath: '',
+        visible: true,
+      },
+      {
+        title: 'Hố ga',
+        imagePath: '',
+        visible: true,
+      },
+      {
+        title: 'Cửa xả',
+        imagePath: '',
+        visible: true,
+      },
+      {
+        title: 'Hồ điều hoà',
+        imagePath: '',
+        visible: true,
+      },
+      {
+        title: 'Trạm đo mưa',
+        imagePath: '',
+        visible: true,
+      },
+    ]);
+    provide('mainLayerData', mainLayerData);
 
-    const getSignedIn = () => {
-      axios
-        .post('http://127.0.0.1:8000/api/signed-in', data, accessToken)
-        .then((response) => {
-          if (response) {
-            userState().onAuthentication();
-            userData.value = response.data.user;
-            homeSpinning.value = false;
-            // console.log(response.data);
-            // console.log(response.data);
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-          homeSpinning.value = false;
+    const searchValue = ref('');
+    const searchInputDisabled = ref(false);
+    provide('searchInputDisabled', searchInputDisabled);
 
-          userState().onLogOut();
-        });
-    };
-    getSignedIn();
+    // console.log((siderCollapsed.value = true));
     return {
+      userData,
       homeSpinning,
       ...storeToRefs(store),
+      siderCollapsed,
+      siderWidth,
+      collapsedWidth,
+      onBreakpoint,
+      searchValue,
+      searchInputDisabled,
     };
   },
 
@@ -109,21 +249,14 @@ export default defineComponent({
     // },
   },
 
-  data() {
-    return {
-      // signInState: true,
-      // test: '123',
-      // anhquyen: '321123',
-      // map: new ol.Map({}),
-    };
-  },
-
   mounted() {
+    // console.log(this.anhquyen);
     const mapStore = mapState();
     const { getMap, setMap } = mapStore;
-    const map = new ol.Map({
+
+    const map = new Map({
       target: 'map',
-      view: new ol.View({
+      view: new View({
         // projection: 'EPSG:4326',
         projection: customCRS.addCustomCrs('EPSG:5899'),
 
@@ -131,6 +264,10 @@ export default defineComponent({
         maxZoom: 22,
       }),
     });
+    // const key = 'FaZvqSsyUcg9u0pnhR97';
+    // const styleJson = `https://api.maptiler.com/maps/topo-v2/style.json?key=${key}`;
+    // olms.apply(map, 'https://api.maptiler.com/maps/topo-v2/style.json?key=FaZvqSsyUcg9u0pnhR97');
+    // olms.apply(map, styleJson);
     mapState().setMap(map);
     runMap(map);
 
@@ -275,6 +412,17 @@ export default defineComponent({
         // });
       }
     },
+
+    siderCollapsedChange() {
+      this.siderCollapsed = !this.siderCollapsed;
+      // console.log(this.siderCollapsed);
+    },
+
+    onSearch() {
+      // console.log(this.searchValue);
+      this.$refs.siderLayerManagerRef.onSearch(this.searchValue);
+      // console.log(this.$refs);
+    },
   },
 });
 </script>
@@ -285,32 +433,58 @@ export default defineComponent({
 }
 .map .ol-zoom {
   position: absolute;
-  top: 15rem;
+  top: 35vh;
   left: auto;
-  right: 2.5rem;
+  right: 2.5vw;
 }
 
 .top-left-nav {
   position: absolute;
-  top: 1rem;
-  left: 2rem;
+  top: 2vh;
+  left: 2vw;
 }
 .top-right-nav {
   position: absolute;
-  top: 1rem;
-  right: 2rem;
+  top: 2vh;
+  right: 2vw;
 }
 
 .bottom-right-nav {
   position: absolute;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: 2vw;
+  right: 2vh;
   display: flex;
   flex-direction: column;
 }
 
 .ol-control.ol-layerswitcher-image button::after {
-  background-color: red;
   right: 2rem;
+}
+
+.home-sider {
+  position: relative;
+  width: 100%;
+  // margin-left: calc(100vw - 100%);
+  overflow-x: hidden;
+  overflow-y: overlay;
+  // scrollbar-gutter: stable;
+  // overflow: hidden !important;
+  &.zero-width {
+    border: 1px solid rgb(203, 203, 203);
+    padding: 0.5rem;
+    height: 100vh;
+    max-height: 100vh;
+  }
+  &::-webkit-scrollbar {
+    width: 0px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: darkgrey;
+    border-radius: 3px;
+  }
+  &:hover {
+    // overscroll-behavior-y: overlay;
+  }
 }
 </style>

@@ -7,6 +7,7 @@ import {
   Row,
   Col,
   Input,
+  InputNumber,
   Layout,
   Drawer,
   Popover,
@@ -30,6 +31,7 @@ import {
   Dropdown,
   Result,
   Spin,
+  Tag,
 } from 'ant-design-vue';
 import App from './App.vue';
 import axios from 'axios';
@@ -39,6 +41,11 @@ import '../node_modules/bootstrap/dist/css/bootstrap-grid.min.css';
 import '../node_modules/bootstrap/dist/css/bootstrap-utilities.min.css';
 import '../node_modules/chart.js/dist/chart.umd.js';
 import '../node_modules/dayjs/dayjs.min.js';
+import '../node_modules/ol/dist/ol.js';
+import '../node_modules/ol/ol.css';
+
+// import '../node_modules/ol-ext/dist/ol-ext.js';
+// import '../node_modules/ol-ext/dist/ol-ext.css';
 
 const app = createApp(App);
 app.config.productionTip = false;
@@ -50,6 +57,7 @@ app.use(Layout);
 app.use(Row);
 app.use(Col);
 app.use(Input);
+app.use(InputNumber);
 app.use(Drawer);
 app.use(Popover);
 app.use(Form);
@@ -72,6 +80,7 @@ app.use(Avatar);
 app.use(Dropdown);
 app.use(Result);
 app.use(Spin);
+app.use(Tag);
 
 app.mount('#app');
 

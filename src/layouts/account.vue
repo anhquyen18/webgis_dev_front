@@ -1,9 +1,12 @@
 <template>
   <a-spin tip="Loading..." size="large" :spinning="accountSpinning">
     <a-layout style="max-width: 100vw; height: 100vh">
-      <a-layout-header v-if="!accountSpinning" class="header" style="max-height: 9vh; padding: 0">
-        <a-row style="height: 100%">
-          <a-col :span="3" :style="{ height: '100%', display: 'flex', alignItems: 'center' }">
+      <a-layout-header
+        v-if="!accountSpinning"
+        class="header"
+        style="max-height: 9vh; padding: 0; background-color: var(--dark1-theme-color)">
+        <a-row justify="space-between" style="height: 100%">
+          <a-col :span="4" :style="{ height: '100%', display: 'flex', alignItems: 'center' }">
             <a-button
               ghost
               class="ms-4"
@@ -14,22 +17,24 @@
               <i class="fa-solid fa-bars"></i>
             </a-button>
             <img src="../assets/luffy-chilling-gear5-round.png" alt="logo" style="width: 5rem; height: 5rem" />
-            <p class="text-white fw-bold fs-4">WAREC</p>
+            <p class="fw-bold fs-4" style="color: darkgray"></p>
           </a-col>
-          <a-col
-            :offset="16"
-            :span="5"
-            :style="{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }">
-            <router-link :to="{ name: 'home-page' }">
-              <a-button ghost type="default" :style="headerButton">
-                <p class="fw-bold">Trang chủ</p>
-              </a-button>
-            </router-link>
 
-            <a-button ghost type="default" :style="headerButton">
-              <p class="fw-bold">Hỗ trợ</p>
-            </a-button>
-            <a-divider type="vertical" style="background-color: white; height: 2rem" />
+          <a-col :span="4" :style="{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'right' }">
+            <a-col :xl="{ span: 24 }" :md="{ span: 24 }" :xs="{ span: 0 }">
+              <div style="display: flex; align-items: center; justify-content: right">
+                <router-link :to="{ name: 'home-page' }">
+                  <a-button ghost type="default" :style="headerButton">
+                    <p class="fw-bold">Home</p>
+                  </a-button>
+                </router-link>
+
+                <a-button ghost type="default" :style="headerButton">
+                  <p class="fw-bold">Support</p>
+                </a-button>
+              </div>
+            </a-col>
+            <!-- <a-divider type="vertical" style="background-color: white; height: 2rem" /> -->
             <AccountNavigator></AccountNavigator>
           </a-col>
         </a-row>
@@ -39,13 +44,12 @@
         <a-layout-sider
           v-model:collapsed="collapsed"
           :trigger="null"
-          breakpoint="lg"
+          breakpoint="xl"
           collapsedWidth="0"
-          width="250"
           @breakpoint="onBreakpoint"
+          ref="sider"
           style="height: 100%; overflow: hidden">
           <a-menu
-            v-model:openKeys="openKeys"
             v-model:selectedKeys="selectedKeys"
             style="margin-top: 2rem"
             mode="inline"
@@ -54,13 +58,19 @@
             <a-menu-item key="account-profile">
               <router-link :to="{ name: 'account-profile' }">
                 <i class="fa-regular fa-user me-2"></i>
-                <span>Thông tin tài khoản</span>
+                <span>Edit profile</span>
               </router-link>
             </a-menu-item>
             <a-menu-item key="account-password">
               <router-link :to="{ name: 'account-password' }">
                 <i class="fa-solid fa-lock me-2"></i>
-                <span>Thay đổi mật khẩu</span>
+                <span>Change password</span>
+              </router-link>
+            </a-menu-item>
+            <a-menu-item v-if="accountInfo.department_id === 3" key="account-users-manager">
+              <router-link :to="{ name: 'account-users-manager' }">
+                <i class="fa-solid fa-building-user me-2"></i>
+                <span>Users manager</span>
               </router-link>
             </a-menu-item>
           </a-menu>
@@ -80,7 +90,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, reactive, toRefs, provide } from 'vue';
+import { defineComponent, ref, reactive, toRefs, provide, inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRoute } from 'vue-router';
 import AccountNavigator from '../components/header/account-navigator.vue';
@@ -88,63 +98,95 @@ import { storeToRefs } from 'pinia';
 import { accountMenu } from '../stores/account-menu.js';
 import { userState } from '../stores/user-state';
 import { setCookie, getCookie } from '../js/util';
+import { message } from 'ant-design-vue';
+import Profile from '../pages/account/profile/index.vue';
 
 export default defineComponent({
   components: {
     AccountNavigator,
   },
+
+  beforeRouteEnter(to, from, next) {
+    if (getCookie('accessToken') === '') {
+      message.error('Please sign in!');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    } else {
+      // Cái này cho vào route rồi mới xử lý xác thực
+      // Nếu chưa xác thực được thì không cho vào thì nên để next then
+      // layout ẩn then accountSpin nên nếu chưa xác thực xong thì cũng chẳng hiện background
+      // chỉ hiện mỗi loading spin
+      // còn ở home thì cho hiển thị giao diện ở background
+      // vì ở không cần bảo mật thông tin
+      next((data) => {
+        const getSignedIn = () => {
+          axios
+            .post(
+              'http://127.0.0.1:8000/api/signed-in',
+              { accountId: to.params.accountId },
+              {
+                headers: {
+                  Authorization: `Bearer ${getCookie('accessToken')}`,
+                },
+              }
+            )
+            .then((response) => {
+              if (response) {
+                userState().onAuthentication();
+                setCookie('user', JSON.stringify(response.data.user));
+                data.accountSpinning = false;
+                data.accountInfo = JSON.parse(getCookie('user'));
+              }
+            })
+            .catch((error) => {
+              console.log(error);
+              setCookie('accessToken', '');
+              setCookie('user', '');
+              message.error(error.response.data.error);
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 1000);
+            });
+        };
+        getSignedIn();
+      });
+    }
+  },
+
   setup() {
     let that = this;
+    const router = useRouter();
     const store = accountMenu();
-    const { selectedKeys, openKeys } = store;
+    // const { selectedKeys, openKeys } = store;
     const collapsed = ref(false);
     const headerButton = { height: '2rem', backgroundColor: 'transparent', border: 'none' };
 
-    const accountInfo = ref({});
+    const accountInfo = ref('');
     provide('accountInfo', accountInfo);
 
     const accountSpinning = ref(true);
     const profileSpinning = ref(false);
     provide('profileSpinning', profileSpinning);
 
-    let accessToken = {
-      headers: {
-        Authorization: `Bearer ${getCookie('accessToken')}`,
-      },
-    };
     let data = useRoute().params;
     const redirect = () => {
       useRouter().push('/');
     };
 
-    const getSignedIn = () => {
-      axios
-        .post('http://127.0.0.1:8000/api/signed-in', data, accessToken)
-        .then((response) => {
-          if (response) {
-            accountInfo.value = response.data.user;
-            userState().onAuthentication();
-            accountSpinning.value = false;
-            // console.log(response.data);
-            // console.log(response.data.geoserverAccount);
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-          window.location.href = '/';
-          // console.log(useRouter());
-          // that.$router.push({ name: 'home-page' });/
-        });
-    };
-    getSignedIn();
-
-    // getUserSignIn();
-    // console.log('anhquyen');
     const onBreakpoint = (broken) => {
       // console.log(broken);
     };
 
-    return { ...storeToRefs(store), headerButton, onBreakpoint, collapsed, accountSpinning, profileSpinning };
+    return {
+      ...storeToRefs(store),
+      headerButton,
+      onBreakpoint,
+      collapsed,
+      accountSpinning,
+      profileSpinning,
+      accountInfo,
+    };
   },
   data() {
     return {
@@ -154,15 +196,12 @@ export default defineComponent({
     };
   },
   methods: {
-    test() {
-      console.log(this.openKeys);
+    test(value) {
+      // console.log(this.selectedKeys);
+      // console.log(value);
     },
   },
 });
 </script>
 
-<style lang="scss">
-.content-border {
-  border-radius: 0.6rem 0;
-}
-</style>
+<style lang="scss"></style>

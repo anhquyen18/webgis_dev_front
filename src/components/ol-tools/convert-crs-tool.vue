@@ -1,20 +1,25 @@
 <template>
   <div>
-    <a-button type="primary" shape="round" @click="showConvertCrsModal">
-      <template #icon>
-        <i class="fa-solid fa-globe text-white"></i>
-      </template>
-    </a-button>
+    <a-popover>
+      <template #content> Coordinate Transformation (CRS) </template>
+      <a-button type="primary" shape="round" @click="showConvertCrsModal">
+        <template #icon>
+          <i class="fa-solid fa-globe text-white"></i>
+        </template>
+      </a-button>
+    </a-popover>
+
     <a-modal
       :open="visible"
-      title="Chuyển đổi hệ toạ độ (CRS)"
+      title="Transform coordinates (CRS)"
       :closable="false"
+      :maskClosable="false"
       :zIndex="1000"
       @ok="modalOk"
       @cancel="modalCancel">
       <a-form layout="horizontal">
         <div class="row">
-          <a-form-item name="area" label="Hệ toạ độ hiện tại">
+          <a-form-item name="area" label="Current CRS">
             <a-select style="width: 100%" :filter-option="filterOption" show-search @change="oldSelectChange">
               <a-select-option v-for="option in crsList" :key="option.code" :value="option.name" :proj4="option.proj4">
               </a-select-option>
@@ -34,7 +39,7 @@
           </div>
         </div>
         <div class="row mt-4">
-          <a-form-item name="area" label="Hệ toạ độ chuyển đổi">
+          <a-form-item name="area" label="New CRS">
             <a-select style="width: 100%" :filter-option="filterOption" show-search @change="newSelectChange">
               <a-select-option v-for="option in crsList" :key="option.code" :value="option.name" :proj4="option.proj4">
               </a-select-option>
@@ -54,7 +59,7 @@
           </div>
         </div>
         <a-form-item>
-          <a-button type="primary" @click="transform">Chuyển đổi</a-button>
+          <a-button type="primary" @click="transform">Transform</a-button>
         </a-form-item>
       </a-form>
     </a-modal>

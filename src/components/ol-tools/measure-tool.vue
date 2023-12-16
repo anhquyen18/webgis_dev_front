@@ -1,10 +1,19 @@
 <template>
-  <a-button type="primary" shape="round" @click="addMeasureTool"><i class="fa-solid fa-ruler"></i></a-button>
+  <a-popover>
+    <template #content> Measure </template>
+    <a-button type="primary" shape="round" @click="addMeasureTool"><i class="fa-solid fa-ruler"></i></a-button>
+  </a-popover>
 </template>
 
 <script>
 import { defineComponent, ref, reactive, toRefs } from 'vue';
 import { mapState } from '../../stores/map-state';
+import { Vector as VectorSource } from 'ol/source.js';
+import { Circle, Fill, Stroke, Style, RegularShape, Text } from 'ol/style.js';
+import { Modify, Draw } from 'ol/interaction.js';
+import * as Sphere from 'ol/sphere.js';
+import { LineString, Point } from 'ol/geom.js';
+import * as VueLayer from '../../js/VueLayer';
 
 export default defineComponent({
   components: {},
@@ -20,59 +29,59 @@ export default defineComponent({
 
   data() {
     return {
-      measureSource: new ol.source.Vector(),
+      measureSource: new VectorSource(),
 
-      measureStyle: new ol.style.Style({
-        fill: new ol.style.Fill({
+      measureStyle: new Style({
+        fill: new Fill({
           color: 'rgba(255, 255, 255, 0.2)',
         }),
-        stroke: new ol.style.Stroke({
+        stroke: new Stroke({
           color: 'rgba(38, 111, 247, 0.8)',
           lineDash: [10, 10],
           width: 2,
         }),
-        image: new ol.style.Circle({
+        image: new Circle({
           radius: 5,
-          stroke: new ol.style.Stroke({
+          stroke: new Stroke({
             color: 'rgba(0, 0, 0, 0.7)',
           }),
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(38, 111, 247, 0.5)',
           }),
         }),
       }),
 
-      measureLabelStyle: new ol.style.Style({
-        text: new ol.style.Text({
+      measureLabelStyle: new Style({
+        text: new Text({
           font: '14px Calibri,sans-serif',
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(255, 255, 255, 1)',
           }),
-          backgroundFill: new ol.style.Fill({
+          backgroundFill: new Fill({
             color: 'rgba(0, 0, 0, 0.7)',
           }),
           padding: [3, 3, 3, 3],
           textBaseline: 'bottom',
           offsetY: -15,
         }),
-        image: new ol.style.RegularShape({
+        image: new RegularShape({
           radius: 8,
           points: 3,
           angle: Math.PI,
           displacement: [0, 10],
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(0, 0, 0, 0.7)',
           }),
         }),
       }),
 
-      measureTipStyle: new ol.style.Style({
-        text: new ol.style.Text({
+      measureTipStyle: new Style({
+        text: new Text({
           font: '12px Calibri,sans-serif',
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(255, 255, 255, 1)',
           }),
-          backgroundFill: new ol.style.Fill({
+          backgroundFill: new Fill({
             color: 'rgba(0, 0, 0, 0.4)',
           }),
           padding: [2, 2, 2, 2],
@@ -81,24 +90,24 @@ export default defineComponent({
         }),
       }),
 
-      measureModifyStyle: new ol.style.Style({
-        image: new ol.style.Circle({
+      measureModifyStyle: new Style({
+        image: new Circle({
           radius: 5,
-          stroke: new ol.style.Stroke({
+          stroke: new Stroke({
             color: 'rgba(0, 0, 0, 0.7)',
           }),
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(0, 0, 0, 0.4)',
             color: 'rgba(38, 111, 247, 0.8)',
           }),
         }),
-        text: new ol.style.Text({
+        text: new Text({
           text: 'Kéo để tùy chỉnh',
           font: '12px Calibri,sans-serif',
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(255, 255, 255, 1)',
           }),
-          backgroundFill: new ol.style.Fill({
+          backgroundFill: new Fill({
             color: 'rgba(0, 0, 0, 0.7)',
           }),
           padding: [2, 2, 2, 2],
@@ -107,33 +116,33 @@ export default defineComponent({
         }),
       }),
 
-      measureSegmentStyle: new ol.style.Style({
-        text: new ol.style.Text({
+      measureSegmentStyle: new Style({
+        text: new Text({
           font: '12px Calibri,sans-serif',
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(255, 255, 255, 1)',
           }),
-          backgroundFill: new ol.style.Fill({
+          backgroundFill: new Fill({
             color: 'rgba(0, 0, 0, 0.4)',
           }),
           padding: [2, 2, 2, 2],
           textBaseline: 'bottom',
           offsetY: -12,
         }),
-        image: new ol.style.RegularShape({
+        image: new RegularShape({
           radius: 6,
           points: 3,
           angle: Math.PI,
           displacement: [0, 8],
-          fill: new ol.style.Fill({
+          fill: new Fill({
             color: 'rgba(0, 0, 0, 0.4)',
           }),
         }),
       }),
 
       tipPoint: null,
-      measureModify: new ol.interaction.Modify({
-        source: new ol.source.Vector(),
+      measureModify: new Modify({
+        source: new VectorSource(),
       }),
       drawMeasure: null,
       // measureModify: null,
@@ -147,21 +156,8 @@ export default defineComponent({
   mounted() {},
 
   methods: {
-    getLayerByTitle(title) {
-      var layer;
-      this.map
-        .getLayers()
-        .getArray()
-        .forEach((element) => {
-          if (element.get('title') == title) {
-            layer = element;
-          }
-        });
-      return layer;
-    },
-
     measureFormatLength(line) {
-      const length = ol.sphere.getLength(line);
+      const length = Sphere.getLength(line);
       let output;
 
       if (length > 100) {
@@ -173,7 +169,7 @@ export default defineComponent({
     },
 
     measureFormatArea(polygon) {
-      const area = ol.sphere.getArea(polygon);
+      const area = Sphere.getArea(polygon);
       // const perimeter = ol.sphere.getLength(polygon);
       let output;
       if (area > 10000) {
@@ -195,9 +191,9 @@ export default defineComponent({
         if (type === 'Polygon') {
           point = geometry.getInteriorPoint();
           label = this.measureFormatArea(geometry);
-          line = new ol.geom.LineString(geometry.getCoordinates()[0]);
+          line = new LineString(geometry.getCoordinates()[0]);
         } else if (type === 'LineString') {
-          point = new ol.geom.Point(geometry.getLastCoordinate());
+          point = new Point(geometry.getLastCoordinate());
           label = this.measureFormatLength(geometry);
           line = geometry;
         }
@@ -206,12 +202,12 @@ export default defineComponent({
         let count = 0;
         let that = this;
         line.forEachSegment(function (a, b) {
-          const segment = new ol.geom.LineString([a, b]);
+          const segment = new LineString([a, b]);
           const label = that.measureFormatLength(segment);
           if (measureSegmentStyles.length - 1 < count) {
             measureSegmentStyles.push(that.measureSegmentStyle.clone());
           }
-          const segmentPoint = new ol.geom.Point(segment.getCoordinateAt(0.5));
+          const segmentPoint = new Point(segment.getCoordinateAt(0.5));
           measureSegmentStyles[count].setGeometry(segmentPoint);
           measureSegmentStyles[count].getText().setText(label);
           styles.push(measureSegmentStyles[count]);
@@ -238,11 +234,11 @@ export default defineComponent({
     measureAddInteraction(measureType) {
       // var typeSelected = this.measureType;
       // console.log(typeSelected);
-      const activeTip = 'Nhấn chuột trái để tiếp tục đo ' + (measureType === 'Polygon' ? 'diện tích' : 'khoảng cách');
-      const idleTip = 'Nhấn chuột trái để bắt đầu đo';
+      const activeTip = 'Left click to continue ' + (measureType === 'Polygon' ? 'Area' : 'Length');
+      const idleTip = 'Left click to start measuring';
       let tip = idleTip;
       let that = this;
-      this.drawMeasure = new ol.interaction.Draw({
+      this.drawMeasure = new Draw({
         source: that.measureSource,
         type: measureType,
         style: function (feature) {
@@ -268,9 +264,9 @@ export default defineComponent({
       if (this.drawMeasure) {
         return;
       }
-      this.getLayerByTitle('Measure layer').setSource(this.measureSource);
-      this.getLayerByTitle('Measure layer').setStyle(this.getMeasureStyle);
-      this.measureModify = new ol.interaction.Modify({
+      VueLayer.getLayerByTitle(this.map, 'Measure layer').setSource(this.measureSource);
+      VueLayer.getLayerByTitle(this.map, 'Measure layer').setStyle(this.getMeasureStyle);
+      this.measureModify = new Modify({
         source: this.measureSource,
         style: this.measureModifyStyle,
       });
@@ -290,6 +286,7 @@ export default defineComponent({
       this.measureSource.clear();
       this.map.removeInteraction(this.drawMeasure);
       this.measureModify.setActive(false);
+      this.drawMeasure = null;
     },
 
     measureTypeChange(measureType) {

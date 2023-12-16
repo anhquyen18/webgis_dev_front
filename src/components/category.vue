@@ -1,5 +1,5 @@
 <template>
-  <a-button shape="circle" size="large" @click="danhMucShower()">
+  <a-button size="large" shape="circle" @click="danhMucShower()">
     <i class="fa-solid fa-bars"></i>
   </a-button>
 
@@ -7,26 +7,44 @@
     title="Danh mục"
     size="large"
     placement="left"
-    :closable="false"
     :open="danhMucVisible"
-    @close="danhMucOnClose">
-    <a-collapse class="fs-5" v-model:activeKey="activeKey" :bordered="false">
-      <a-collapse-panel key="1" header="Bộ chỉ số">
+    @close="danhMucOnClose"
+    :bodyStyle="{ maxWidth: '100vw' }">
+    <a-collapse v-model:activeKey="activeKey" :bordered="false">
+      <a-collapse-panel key="1">
+        <template #header>
+          <p class="fw-bold">Bộ chỉ số</p>
+        </template>
         <p class="fs-6">{{ text }}</p>
       </a-collapse-panel>
-      <a-collapse-panel key="2" header="Loại hình cung cấp nước">
+      <a-collapse-panel key="2">
+        <template #header>
+          <p class="fw-bold">Loại hình cung cấp nước</p>
+        </template>
         <p class="fs-6">{{ text }}</p>
       </a-collapse-panel>
-      <a-collapse-panel key="3" header="Nguồn cung cấp nước">
+      <a-collapse-panel key="3">
+        <template #header>
+          <p class="fw-bold">Nguồn cung cấp nước</p>
+        </template>
         <p class="fs-6">{{ text }}</p>
       </a-collapse-panel>
-      <a-collapse-panel key="4" header="Công trình và phạm vi cung cấp nước">
+      <a-collapse-panel key="4">
+        <template #header>
+          <p class="fw-bold">Công trình và phạm vi cung cấp nước</p>
+        </template>
         <p class="fs-6">{{ text }}</p>
       </a-collapse-panel>
-      <a-collapse-panel key="5" header="Đối tượng sử dụng">
+      <a-collapse-panel key="5">
+        <template #header>
+          <p class="fw-bold">Đối tượng sử dụng</p>
+        </template>
         <p class="fs-6">{{ text }}</p>
       </a-collapse-panel>
-      <a-collapse-panel key="6" header="Đơn vị hành chính">
+      <a-collapse-panel key="6">
+        <template #header>
+          <p class="fw-bold">Đơn vị hành chính</p>
+        </template>
         <p class="fs-6">{{ text }}</p>
       </a-collapse-panel>
     </a-collapse>

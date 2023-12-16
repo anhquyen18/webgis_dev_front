@@ -1,13 +1,17 @@
 <template>
   <div>
-    <a-button type="primary" shape="round" @click="showModal">
-      <template #icon>
-        <i class="fa-solid fa-tower-cell"></i>
-      </template>
-    </a-button>
+    <a-popover>
+      <template #content> Search For Object By Area </template>
+      <a-button type="primary" shape="round" @click="showModal">
+        <template #icon>
+          <i class="fa-solid fa-tower-cell"></i>
+        </template>
+      </a-button>
+    </a-popover>
+
     <a-modal
       :open="visible"
-      title="Tìm kiếm đối tượng theo vùng chọn"
+      title="Search for objects by area"
       :closable="false"
       :zIndex="1000"
       @ok="modalOk"
@@ -15,7 +19,7 @@
       <a-form layout="horizontal">
         <div class="row mb-2">
           <div class="col-4">
-            <p class="d-flex justify-content-center align-items-center h-100">Toạ độ X</p>
+            <p class="d-flex justify-content-center align-items-center h-100">X Coordinate</p>
           </div>
           <div class="col-8">
             <a-input type="number" v-model:value="x" placeholder="" />
@@ -23,7 +27,7 @@
         </div>
         <div class="row mb-2">
           <div class="col-4">
-            <p class="d-flex justify-content-center align-items-center h-100">Toạ độ Y</p>
+            <p class="d-flex justify-content-center align-items-center h-100">Y Coordinate</p>
           </div>
           <div class="col-8">
             <a-input type="number" v-model:value="y" placeholder="" />
@@ -31,7 +35,7 @@
         </div>
         <div class="row mb-2">
           <div class="col-4">
-            <p class="d-flex justify-content-center align-items-center h-100">Bán kính (m)</p>
+            <p class="d-flex justify-content-center align-items-center h-100">Radius (m)</p>
           </div>
           <div class="col-8">
             <a-input type="number" v-model:value="radius" placeholder="" />
@@ -45,13 +49,13 @@
               v-model:value="selectedItem"
               :options="layerOptions"
               :filter-option="filterOption"
-              placeholder="Chọn đối tượng tìm kiếm">
+              placeholder="Select object">
             </a-select>
           </div>
         </div>
 
         <div class="row mb-2">
-          <p class="text-warning">* Hệ toạ độ bản đồ đang sử dụng: EPSG:5899</p>
+          <p class="text-warning">* CRS in map: EPSG:5899</p>
         </div>
       </a-form>
     </a-modal>
@@ -67,6 +71,9 @@ import { defineComponent, ref, reactive, toRefs } from 'vue';
 import { mapState } from '../../stores/map-state';
 import { interfaceState } from '../../stores/interface-state';
 import { dataState } from '../../stores/data-state';
+import * as VueLayer from '../../js/VueLayer';
+import { Feature } from 'ol';
+import { Circle } from 'ol/geom';
 
 export default defineComponent({
   components: {},
@@ -117,16 +124,19 @@ export default defineComponent({
     showModal() {
       this.visible = true;
       if (!this.layerOptions.length > 0) {
-        this.getAllMainLayerName();
+        VueLayer.getAllLayerTitle(this.map, 1).forEach((element, index) => {
+          this.layerOptions.push({ value: element, label: element });
+        });
+        // this.getAllMainLayerName();
       }
     },
     modalOk() {
       if (this.x && this.y && this.radius && this.selectedItem.length > 0) {
-        const searchVector = this.getLayerByTitle('Search layer');
+        const searchVector = VueLayer.getLayerByTitle(this.map, 'Search layer');
         searchVector.getSource().clear();
         this.foundData = [];
-        var feature = new ol.Feature({
-          geometry: new ol.geom.Circle([Number(this.x), Number(this.y)], Number(this.radius)),
+        var feature = new Feature({
+          geometry: new Circle([Number(this.x), Number(this.y)], Number(this.radius)),
         });
         searchVector.getSource().addFeature(feature);
 
@@ -134,7 +144,7 @@ export default defineComponent({
 
         this.selectedItem.forEach((title) => {
           this.foundData.push({ key: i + 1, header: title, foundFeature: [] });
-          this.getMainLayerByTitle(title)
+          VueLayer.getLayerByTitle(this.map, title, 1)
             .getSource()
             .forEachFeature((checkedFeature) => {
               if (feature.getGeometry().intersectsExtent(checkedFeature.getGeometry().getExtent())) {
@@ -148,7 +158,7 @@ export default defineComponent({
         // phải là visible mới get intersectsExtent
         // this.getLayerByTitle('Roads layer').setVisible(true);
 
-        this.getLayerByTitle('Roads layer')
+        VueLayer.getLayerByTitle(this.map, 'Roads layer')
           .getSource()
           .forEachFeature((checkedFeature) => {
             if (feature.getGeometry().intersectsExtent(checkedFeature.getGeometry().getExtent())) {
@@ -164,36 +174,13 @@ export default defineComponent({
         this.sendDataToPopup();
       }
     },
-    getAllMainLayerName() {
-      const mainLayer = this.map.getLayers().getArray()[1].getLayers().getArray();
-      mainLayer.forEach((element) => {
-        this.layerOptions.push({ label: element.get('title'), value: element.get('title') });
-      });
-    },
+    // getAllMainLayerName() {
+    //   const mainLayer = this.map.getLayers().getArray()[1].getLayers().getArray();
+    //   mainLayer.forEach((element) => {
+    //     this.layerOptions.push({ label: element.get('title'), value: element.get('title') });
+    //   });
+    // },
 
-    getLayerByTitle(title) {
-      var layer;
-      this.map
-        .getLayers()
-        .getArray()
-        .forEach((element) => {
-          if (element.get('title') == title) {
-            layer = element;
-          }
-        });
-      return layer;
-    },
-
-    getMainLayerByTitle(title) {
-      const mainLayer = this.map.getLayers().getArray()[1].getLayers().getArray();
-      var layer = null;
-      mainLayer.forEach((element) => {
-        if (element.get('title') == title) {
-          layer = element;
-        }
-      });
-      return layer;
-    },
     sendDataToPopup() {
       console.log('updated');
       this.$emit('data-updated', this.foundData);
@@ -203,7 +190,7 @@ export default defineComponent({
       // console.log('search vector');
       // console.log(this.getLayerByTitle('Search layer').get('title'));
 
-      this.getLayerByTitle('Search layer').getSource().clear();
+      VueLayer.getLayerByTitle(this.map, 'Search layer').getSource().clear();
     },
   },
 });

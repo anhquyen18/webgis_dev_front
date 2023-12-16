@@ -1,52 +1,61 @@
 <template>
-  <a-popover trigger="click" placement="leftBottom" color="white">
+  <a-popover trigger="click" placement="topRight" color="white">
     <template #content>
-      <a-divider style="border-color: black" orientation="left">Các lớp dữ liệu</a-divider>
-      <ul class="layer-list main-layer">
-        <li v-for="layer in mainLayerData" class="me-2">
-          <a-tooltip>
-            <template #title> {{ layer.title }}</template>
-            <div class="layer-image">
-              <a-button
-                @click="changeLayerVisible(layer.title, $event)"
-                type="primary"
-                shape="circle"
-                block
-                class="h-100">
-                <img
-                  :src="layer.imagePath"
-                  alt=""
-                  width="57"
-                  height="57"
-                  class="layer-image__image position-absolute rounded-circle layer-image__image--active" />
-              </a-button>
-            </div>
-          </a-tooltip>
-        </li>
-      </ul>
-      <a-divider style="border-color: black" orientation="left">Bản đồ nền</a-divider>
-      <ul class="layer-list">
-        <li v-for="layer in basemapLayerData" class="me-2">
-          <a-tooltip>
-            <template #title>{{ layer.title }}</template>
-            <div class="layer-image">
-              <a-button
-                @click="changeBaseMap(layer.imagePath, layer.title)"
-                type="primary"
-                shape="circle"
-                block
-                class="h-100">
-                <img
-                  :src="layer.imagePath"
-                  alt=""
-                  width="57"
-                  height="57"
-                  class="layer-image__image position-absolute rounded-circle" />
-              </a-button>
-            </div>
-          </a-tooltip>
-        </li>
-      </ul>
+      <div style="max-width: 70vw">
+        <a-divider style="border-color: black" orientation="left">
+          Layers
+          <a-button @click="showLayersInfoModal" style="border: none; padding: 0; font-size: 1rem">
+            <InfoCircleOutlined />
+          </a-button>
+        </a-divider>
+        <a-row class="main-layer" :gutter="[0, 8]">
+          <a-col :xl="4" :xs="6" v-for="(layer, index) in mainLayerData">
+            <a-tooltip>
+              <template #title> {{ layer.title }}</template>
+              <div class="layer-image">
+                <a-button
+                  @click="changeLayerVisible(layer.title, index)"
+                  type="primary"
+                  shape="circle"
+                  block
+                  class="h-100"
+                  :style="{ margin: 0, padding: 0 }">
+                  <img
+                    :src="layer.imagePath"
+                    alt=""
+                    width="57"
+                    height="57"
+                    :class="{ 'layer-image__image--active': layer.visible }"
+                    class="layer-image__image position-absolute rounded-circle" />
+                </a-button>
+              </div>
+            </a-tooltip>
+          </a-col>
+        </a-row>
+        <a-divider style="border-color: black" orientation="left">Basemaps</a-divider>
+        <a-row class="basemap-layer" :gutter="[0, 8]">
+          <a-col :xl="4" :xs="6" v-for="layer in basemapLayerData">
+            <a-tooltip>
+              <template #title>{{ layer.title }}</template>
+              <div class="layer-image">
+                <a-button
+                  @click="changeBaseMap(layer.imagePath, layer.title)"
+                  type="primary"
+                  shape="circle"
+                  block
+                  class="h-100">
+                  <img
+                    :src="layer.imagePath"
+                    alt=""
+                    width="57"
+                    height="57"
+                    class="layer-image__image position-absolute rounded-circle" />
+                </a-button>
+              </div>
+            </a-tooltip>
+          </a-col>
+        </a-row>
+      </div>
     </template>
     <div class="layer-image">
       <a-button type="primary" shape="circle" block class="h-100">
@@ -58,84 +67,109 @@
           class="layer-image__image position-absolute rounded-circle" />
       </a-button>
     </div>
+
+    <a-modal v-model:open="layersInfoOpen" title="Layers Infomation" @ok="layersInfoModalOk" :zIndex="100000">
+      <p>Some contents...</p>
+      <p>Some contents...</p>
+      <p>Some contents...</p>
+    </a-modal>
   </a-popover>
 </template>
 
 <script>
-import { defineComponent, ref, reactive, toRefs } from 'vue';
+import { defineComponent, ref, reactive, toRefs, inject } from 'vue';
 
 // import { userState } from '../stores/user-state';
 import { mapState } from '../../stores/map-state';
-// import * as a from '../assets';
+import * as VueLayer from '../../js/VueLayer';
+import { InfoCircleOutlined } from '@ant-design/icons-vue';
 
 export default defineComponent({
-  components: {},
+  components: {
+    InfoCircleOutlined,
+  },
   setup() {
     const basemapLayerData = [
       {
         title: 'Open Street Map',
-        imagePath: '/src/assets/layer-image/osm.png',
+        imagePath: '/src/assets/layer-image/Openstreetmap_logo.png',
       },
       {
         title: 'Google Map',
-        imagePath: '/src/assets/layer-image/google.png',
+        imagePath: '/src/assets/layer-image/googlemap.jpg',
       },
-      {
-        title: 'Water Color',
-        imagePath: '/src/assets/layer-image/watercolor.png',
-      },
+      // {
+      //   title: 'Water Color',
+      //   imagePath: '/src/assets/layer-image/watercolor.png',
+      // },
       {
         title: 'Toner',
         imagePath: '/src/assets/layer-image/toner.png',
+      },
+      {
+        title: 'Topo Map',
+        imagePath: '/src/assets/layer-image/topo.jpg',
+      },
+      {
+        title: 'Streets Map',
+        imagePath: '/src/assets/layer-image/streets.png',
       },
       {
         title: 'No Basemap',
         imagePath: '/src/assets/layer-image/nobasemap.png',
       },
     ];
-    const mainLayerData = [
-      {
-        title: 'Cống ngầm',
-        imagePath: '',
-        visible: true,
-      },
-      {
-        title: 'Kênh',
-        imagePath: '',
-        visible: true,
-      },
-      {
-        title: 'Cống ngăn triều',
-        imagePath: '',
-        visible: true,
-      },
-      {
-        title: 'Hố ga',
-        imagePath: '',
-        visible: true,
-      },
-      {
-        title: 'Cửa xả',
-        imagePath: '',
-        visible: true,
-      },
-      {
-        title: 'Hồ điều hoà',
-        imagePath: '',
-        visible: true,
-      },
-      {
-        title: 'Trạm đo mưa',
-        imagePath: '',
-        visible: true,
-      },
-    ];
-    var layerManagerImage = ref(basemapLayerData[1].imagePath);
+
+    // const mainLayerData = ref([
+    //   {
+    //     title: 'Cống ngầm',
+    //     imagePath: '',
+    //     visible: true,
+    //   },
+    //   {
+    //     title: 'Kênh',
+    //     imagePath: '',
+    //     visible: true,
+    //   },
+    //   {
+    //     title: 'Cống ngăn triều',
+    //     imagePath: '',
+    //     visible: true,
+    //   },
+    //   {
+    //     title: 'Hố ga',
+    //     imagePath: '',
+    //     visible: true,
+    //   },
+    //   {
+    //     title: 'Cửa xả',
+    //     imagePath: '',
+    //     visible: true,
+    //   },
+    //   {
+    //     title: 'Hồ điều hoà',
+    //     imagePath: '',
+    //     visible: true,
+    //   },
+    //   {
+    //     title: 'Trạm đo mưa',
+    //     imagePath: '',
+    //     visible: true,
+    //   },
+    // ]);
+
+    const mainLayerData = inject('mainLayerData');
+
+    // default basemap
+    var layerManagerImage = ref(basemapLayerData[4].imagePath);
+    const layersInfoOpen = ref(false);
     const test = ref(false);
+
     return {
       basemapLayerData,
       layerManagerImage,
       mainLayerData,
+      layersInfoOpen,
       test,
     };
   },
@@ -145,8 +179,6 @@ export default defineComponent({
       return userState().getSignInState;
     },
     map() {
-      // const mapStore = mapState();
-      // const { getMap, setMap } = mapStore;
       return mapState().getMap;
     },
   },
@@ -180,26 +212,25 @@ export default defineComponent({
         }
       });
     },
-    getMainLayerByTitle(title) {
-      const mainLayer = this.map.getLayers().getArray()[1].getLayers().getArray();
-      var layer = null;
-      mainLayer.forEach((element) => {
-        if (element.get('title') == title) {
-          layer = element;
-        }
-      });
-      return layer;
-    },
-    changeLayerVisible(layerName, event) {
-      var layer = this.getMainLayerByTitle(layerName);
+    changeLayerVisible(layerName, index) {
+      var layer = VueLayer.getLayerByTitle(this.map, layerName, 1);
       if (layer.getVisible()) {
+        this.mainLayerData[index].visible = false;
         layer.setVisible(false);
-        event.currentTarget.getElementsByTagName('img')[0].classList.remove('layer-image__image--active');
-        this.test = false;
+        // event.currentTarget.getElementsByTagName('img')[0].classList.remove('layer-image__image--active');
+        // this.test = false;
       } else if (!layer.getVisible()) {
         layer.setVisible(true);
-        event.currentTarget.getElementsByTagName('img')[0].classList.add('layer-image__image--active');
+        this.mainLayerData[index].visible = true;
+
+        // event.currentTarget.getElementsByTagName('img')[0].classList.add('layer-image__image--active');
       }
+    },
+    showLayersInfoModal() {
+      this.layersInfoOpen = true;
+    },
+    layersInfoModalOk() {
+      this.layersInfoOpen = false;
     },
   },
 });
@@ -220,17 +251,5 @@ export default defineComponent({
       border: 3px solid #4eee60;
     }
   }
-}
-
-.layer-list {
-  display: flex;
-  // justify-content: space-between;
-  flex-flow: row wrap;
-  width: 315px;
-  height: 60px;
-}
-
-.main-layer {
-  height: 150px;
 }
 </style>
